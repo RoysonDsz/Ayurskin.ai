@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #chat-container { width: 50%; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 10px; }
+        #chat-box { height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; }
+        .user { color: blue; font-weight: bold; }
+        .bot { color: green; font-weight: bold; }
+        input { width: 80%; padding: 10px; }
+        button { padding: 10px; }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <h2>AI Skin Health Chatbot</h2>
+        <div id="chat-box"></div>
+        <input type="text" id="user-input" placeholder="Type a message..." />
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        function sendMessage() {
+            let userInput = document.getElementById("user-input").value;
+            if (!userInput) return;
+
+            let chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML += `<p class="user">You: ${userInput}</p>`;
+
+            fetch('/chatbot-api', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: userInput })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    chatBox.innerHTML += `<p class="bot">Error: ${data.error}</p>`;
+                } else {
+                    chatBox.innerHTML += `<p class="bot">Bot: ${data.response}</p>`;
+                }
+                chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to latest message
+            })
+            .catch(error => {
+                chatBox.innerHTML += `<p class="bot">Error: ${error}</p>`;
+            });
+
+            document.getElementById("user-input").value = "";
+        }
+    </script>
+</body>
+</html>
