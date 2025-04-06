@@ -1,0 +1,39 @@
+# Python virtual environment
+.venv/
+env/
+venv/
+
+# Environment files
+.env
+
+# Compiled Python files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Model files / weights
+*.h5
+*.keras
+*.pb
+*.pt
+*.pth
+*.tflite
+*.joblib
+*.pkl
+*.ckpt
+
+# Uploads (if they're user-submitted images)
+uploads/
+
+# VSCode settings
+.vscode/
+
+# Logs and cache
+*.log
+*.sqlite3
+.cache/
+*.db
+
+# OS stuff
+.DS_Store
+Thumbs.db

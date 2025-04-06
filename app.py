@@ -3,13 +3,12 @@ import cv2
 import numpy as np
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from tensorflow.keras.models import load_model  # type: ignore
-import google.generativeai as genai
+
 
 
 app = Flask(__name__)
 
-# Load environment variables from the .env file
-# load_dotenv()
+
 
 # Load the trained CNN model
 model = load_model("resnet_model_93.06.keras")
@@ -91,21 +90,6 @@ def predict_image(image_path, image_size, model, class_names):
         return None, None
 
 
-
-
-
-genai.configure(api_key='AIzaSyDfnZnDgJzDJs1Lq5kQjzlAIiA1kb0Xzng')
-
-# Correct model name
-model = genai.GenerativeModel("gemini-pro")
-
-def chatbot_response(user_message):
-    try:
-        response = model.generate_content(user_message)
-        return response.text  # Extract text from the response
-    except Exception as e:
-        return f"Error: {str(e)}"
-        
         
 # Routes
 @app.route('/')
