@@ -1,27 +1,25 @@
-import os
-import cv2
-import numpy as np
-from flask import Flask, request, jsonify, render_template, send_from_directory
-from tensorflow.keras.models import load_model  # type: ignore
-import google.generativeai as genai
+from pymongo import MongoClient # type: ignore
 from dotenv import load_dotenv
+import os
 
-load_dotenv()  # To securely load your API key from .env (optional but recommended)
+# Load environment variables from .env file
+load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))  # OR directly paste the key
+# Get MongoDB URI from .env
+MONGO_URI = os.getenv("MONGO_URI")
 
+if not MONGO_URI:
+    raise Exception("❌ MONGO_URI not found in .env file!")
 
+# Connect to MongoDB
+client = MongoClient(MONGO_URI)
+db = client['AyurSkinAI']
+collection = db['remedies']
 
+# Drop old remedies (optional)
+collection.delete_many({})
 
-app = Flask(__name__)
-
-
-
-# Load the trained CNN model
-model = load_model("resnet_model_93.06.keras")
-# model = load_model("Transformer.pth")
-
-
+# Remedies dictionary (your massive dataset!)
 remedies_db = {
     "Acne": {
         "Kumkumadi Lepam": "Made with Turmeric, Saffron, and Sandalwood, Kumkumadi Lepam is an Ayurvedic remedy for acne. Turmeric acts as an anti-inflammatory and antibacterial agent, reducing redness and preventing the growth of acne-causing bacteria. Saffron, packed with antioxidants, helps fade pigmentation, brightens the skin, and promotes healing. Sandalwood soothes irritated skin, controls excessive oil, and prevents clogging of pores. Together, these ingredients rejuvenate the skin, making it radiant and healthy.",
@@ -58,187 +56,17 @@ remedies_db = {
         "Vatari Guggulu": "Made with Castor Oil, Shuddha Gandhaka, Guggulu, and Triphala, Vatari Guggulu helps in reducing joint inflammation and skin lesions associated with psoriasis. Castor Oil acts as a mild laxative, aiding detoxification, while Guggulu and Triphala enhance blood purification and skin repair."
     },
     "Normal Skin/Unknown": {
-        "Normal skin/Unknown": "No visible signs of skin conditions were detected, offering reassurance that your skin appears healthy. For Normal Skin, maintaining good skincare practices like cleansing, moisturizing, and sun protection is recommended. For Unknown Images (such as objects like bikes, environmental photos, or images unrelated to skin disease prediction), the system may not have sufficient confidence in making a clear classification. In such cases, further review or input may be required. If concerns persist, consulting an expert is always recommended for more accurate insights."
+        "Normal skin/Unknown": "No visible signs of skin conditions were detected..."
     }
 }
 
+# Insert new data
+for disease, remedies in remedies_db.items():
+    for name, description in remedies.items():
+        collection.insert_one({
+            "disease": disease,
+            "remedy_name": name,
+            "description": description
+        })
 
-# Define class names
-class_names = ['Acne', 'Basal Cell Carcinoma', 'Eczema', 'Melanoma', 'Normal Skin/Unknown', 'Psoriasis']
-IMAGE_SIZE = 224
-
-# Create an upload directory
-UPLOAD_FOLDER = "./uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-
-# Utility Functions
-def allowed_file(filename):
-    """Check if the uploaded file has a valid extension."""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def predict_image(image_path, image_size, model, class_names):
-    """Preprocess the image and make a prediction using the model."""
-    try:
-        # Read and preprocess the image
-        image = cv2.imread(image_path)
-        if image is None:
-            raise ValueError("Invalid image file.")
-        image_resized = cv2.resize(image, (image_size, image_size))
-        image = np.expand_dims(image_resized, axis=0)
-
-        # Predict
-        prediction = model.predict(image, verbose=0)
-        predicted_class = class_names[np.argmax(prediction)]
-        confidence = np.max(prediction)
-        return predicted_class, confidence
-    except Exception as e:
-        print(f"Error in prediction: {e}")
-        return None, None
-
-
-        
-# Routes
-@app.route('/')
-def home():
-    return render_template('index.html')
-
-@app.route('/about')
-def about():
-    return render_template('about.html')
-
-@app.route('/prediction')
-def prediction_page():
-    return render_template('prediction.html')
-
-@app.route('/healthfoods')
-def healthfoods():
-    return render_template('healthfoods.html')
-
-@app.route('/skincare')
-def skincare():
-    return render_template('skincare.html')
-
-@app.route('/chatbot')
-def chatbot():
-    return render_template('chatbot.html')
-
-
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    """Serve uploaded files."""
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-@app.route('/remedies', methods=['POST'])
-def remedies():
-    data = request.get_json()
-    predicted_class = data.get("predicted_class")
-
-    if not predicted_class:
-        return jsonify({"error": "No disease provided"}), 400
-
-    try:
-        # Prompt Gemini to generate remedies
-        model = genai.GenerativeModel("models/gemini-1.5-flash")
-        prompt = (
-            f"You're an expert Ayurvedic assistant. Give 4-5 Ayurvedic remedies for the skin condition '{predicted_class}'. "
-            "For each remedy, give a name and a short explanation of how it works. Make it easy to understand for someone new to Ayurveda."
-        )
-        response = model.generate_content(prompt)
-        lines = response.text.split("\n")
-        remedies_dict = {str(i+1): line for i, line in enumerate(lines) if line.strip()}
-        
-        
-        return jsonify({"remedies": remedies_dict})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-
-@app.route('/chatbot_api', methods=['POST'])
-def chatbot_api():
-    data = request.get_json()
-    user_message = data.get("message", "")
-    predicted_disease = data.get("predicted_class", "Normal Skin/Unknown")
-
-    try:
-        # Start building the smart, friendly prompt
-        base_intro = (
-            "You are AyurSkin Bot — a chill, knowledgeable, Gen Z-friendly AI assistant "
-            "that helps users with skin health issues. You give helpful, honest, and "
-            "relatable advice about skin conditions, treatments (Ayurvedic + modern), and skincare tips.\n\n"
-        )
-
-        # If we have a known disease and remedies, add that context
-        if predicted_disease in remedies_db:
-            remedies = ""
-            for name, details in remedies_db[predicted_disease].items():
-                remedies += f"- {name}: {details}\n"
-            context = (
-                f"The user is asking a follow-up question related to: {predicted_disease}.\n"
-                f"Here are some known Ayurvedic remedies:\n{remedies}\n\n"
-            )
-        else:
-            context = (
-                f"The user may not have a specific skin condition diagnosed, or it's unknown "
-                f"(Predicted: {predicted_disease}). Just provide helpful general skin health advice based on their question.\n\n"
-            )
-
-        # Final full prompt
-        prompt = (
-            base_intro +
-            context +
-            f"User said: \"{user_message}\"\n\n"
-            "Your reply should be short, chill, and straight to the point — like a helpful text from a friend. No long essays. If the user wants more info, they’ll ask again."
-        )
-
-
-        # Generate response from Gemini
-        model = genai.GenerativeModel("models/gemini-1.5-flash")
-        response = model.generate_content(prompt)
-        reply = response.text.strip()
-
-        return jsonify({"response": reply})
-    
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    """Handle file upload and make predictions."""
-    if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
-
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-
-    if not allowed_file(file.filename):
-        return jsonify({"error": "Invalid file type. Only PNG, JPG, and JPEG are allowed."}), 400
-
-    # Save the file
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    try:
-        file.save(file_path)
-    except Exception as e:
-        return jsonify({"error": f"File save failed: {e}"}), 500
-
-    # Predict
-    predicted_class, confidence = predict_image(file_path, IMAGE_SIZE, model, class_names)
-    if predicted_class:
-        result = {
-            "predicted_class": predicted_class,
-            "confidence": f"{confidence * 100:.2f}%",
-            "image_url": f"/uploads/{file.filename}"
-        }
-        return jsonify(result)
-    else:
-        return jsonify({"error": "Prediction failed"}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
-
+print("✅ Remedies uploaded to MongoDB Atlas successfully!")
