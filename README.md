@@ -2,7 +2,8 @@
 
 A smart skin disease classifier that recommends Ayurvedic remedies based on image analysis using AI.
 
-[![Watch Demo](static/images/background-main.jpg)](demo.mp4)
+[Watch Demo Video](demo.mp4)
+
 
 ## 🚀 Features
 
